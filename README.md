@@ -94,7 +94,7 @@ This file contains configuration details for the Snowflake Kafka Connector, incl
 ## Delta Load Options
 
 1. **Using Date Partitions**: Run the `delta_hdfs_kafka_connector.py` script to process new date-based partitions.
-2. **Using Line Counts**: Use a custom script (e.g., `hdfs_kafka_sync.sh`, not included) to compare and stream new lines from the same file.
+2. **Using Line Counts**: Use a custom script `hdfs_kafka_sync.sh` to compare and stream new lines from the same file.
 
 ---
 
