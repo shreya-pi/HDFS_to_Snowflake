@@ -7,6 +7,7 @@ This repository provides scripts and configurations to build a data pipeline tha
 - **[`delta_hdfs_kafka_connector.py`](delta_hdfs_kafka_connector.py)**: Python script to stream data from HDFS to Kafka using date-based partitions.
 - **[`scripts.sh`](scripts.sh)**: Shell script with commands to set up and manage the pipeline, including Kafka topic creation, data streaming, and Snowflake integration.
 - **[`SF_connect.properties`](SF_connect.properties)**: Configuration file for the Snowflake Kafka Connector.
+- **['hdfs_to_kafka.sh'](hdfs_to_kafka.sh)**: Python script to stream data from HDFS file to Kafka using line count, no date-partition considered.
 
 ---
 
