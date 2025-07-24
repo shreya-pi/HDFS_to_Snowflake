@@ -7,17 +7,9 @@ import re
 import csv
 import io
 from concurrent.futures import ThreadPoolExecutor
+from config import SNOWFLAKE_CONFIG
 
 # --- Configuration (remains the same) ---
-SNOWFLAKE_CONFIG = {
-    'user': os.environ.get("SNOWFLAKE_USER", "SERVICE_USER"),
-    'password': os.environ.get("SNOWFLAKE_PASSWORD", "Tulapi@12345678"),
-    'account': os.environ.get("SNOWFLAKE_ACCOUNT", "A7088372892471-DATAFORTUNE_PARTNER"),
-    'warehouse': os.environ.get("SNOWFLAKE_WAREHOUSE", "DEV_WH"),
-    'database': os.environ.get("SNOWFLAKE_DATABASE", "TEST_DB"),
-    'schema': os.environ.get("SNOWFLAKE_SCHEMA", "TEST_SCHEMA"),
-    'role': os.environ.get("SNOWFLAKE_ROLE", "DEV_ROLE"),
-}
 KAFKA_BOOTSTRAP_SERVERS = 'localhost:9092'
 TOPICS = ['sales_topic', 'productivity_topic', 'cust_topic']
 BATCH_SIZE = 100
