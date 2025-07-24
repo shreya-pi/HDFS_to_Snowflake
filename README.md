@@ -1,108 +1,112 @@
-# HDFS to Kafka to Snowflake Data Pipeline
+# A Web-Based UI for Hadoop Data Pipelines
 
-This repository provides scripts and configurations to build a data pipeline that streams data from HDFS to Kafka and publishes it to Snowflake using the Snowflake Kafka Connector.
+This project is a comprehensive, web-based toolkit built with Streamlit that provides a user-friendly interface for common data engineering tasks within the Hadoop ecosystem. It allows users to manage data pipelines—from initial table creation in Hive, through incremental data loading, to streaming data into Kafka and finally ingesting it into Snowflake—all without writing code or using complex command-line tools.
 
-## Project Structure
-
-- **[`delta_hdfs_kafka_connector.py`](delta_hdfs_kafka_connector.py)**: Python script to stream data from HDFS to Kafka using date-based partitions.
-- **[`scripts.sh`](scripts.sh)**: Shell script with commands to set up and manage the pipeline, including Kafka topic creation, data streaming, and Snowflake integration.
-- **[`SF_connect.properties`](SF_connect.properties)**: Configuration file for the Snowflake Kafka Connector.
-- **[`hdfs_to_kafka.sh`](hdfs_to_kafka.sh)**: Python script to stream data from HDFS file to Kafka using line count, no date-partition considered.
+The application is designed as a multi-tabbed dashboard, where each tab represents a distinct stage in a typical data pipeline, enabling both technical and non-technical users to manage data flows efficiently.
 
 ---
 
-## Prerequisites
+## 🚀 Core Features
 
-1. **HDFS**: Ensure HDFS is set up and accessible.
-2. **Kafka**: Install and configure Kafka.
-3. **Snowflake**: Set up a Snowflake account and create the target table.
-4. **Python**: Install Python 3.x and required libraries:
+The application is organized into a series of logical tabs, each providing a specific set of functionalities:
+
+### 1. Create Hive Tables
+-   **Interactive HDFS File Explorer:** A built-in file browser to navigate your HDFS directories.
+-   **Multi-File Selection:** Select one or more `.csv` files from various locations in HDFS.
+-   **Automatic Schema Inference:** The application reads the header and a sample of the data from each selected CSV to automatically determine column names and data types (e.g., `STRING`, `BIGINT`, `DOUBLE`).
+-   **Batch DDL Generation & Execution:** Generates the `CREATE EXTERNAL TABLE` DDL for all selected files and executes them in a single, robust batch operation to create multiple Hive tables at once.
+
+### 2. HDFS Delta to Kafka
+-   **Automated Discovery:** Scans a specified HDFS base path for data folders that follow a `..._delta_load` naming convention.
+-   **Stateful Incremental Processing:** For each selected folder, it maintains a persistent state to track the last processed date partition.
+-   **Delta Streaming:** On subsequent runs, it identifies and streams **only the new data** from new date-partitioned subfolders (e.g., `date=YYYY-MM-DD`).
+-   **Dynamic Topic Creation:** Automatically creates and streams data to a corresponding Kafka topic (e.g., folder `tuberculosis_delta_load` streams to topic `tuberculosis_delta_topic`).
+-   **Data Enrichment:** Appends the system's current date as a `load_date` column to every message sent to Kafka, providing valuable audit information.
+
+### 3. Hive Delta to Kafka
+-   **Automated Partition Discovery:** Scans selected Hive tables to find new partitions based on the `load_date` partition key.
+-   **Persistent State Management:** Utilizes a `kafka_migrator_state.json` file to remember the last partition streamed for each table, ensuring data is not re-processed on subsequent runs.
+-   **Data Preview:** Allows users to view a sample of the data from the **new partitions only** before committing to the stream.
+-   **Concurrent Streaming:** Uses multi-threading to stream data from multiple Hive tables to Kafka simultaneously, significantly improving performance.
+-   **Data Enrichment:** Similar to the HDFS pipeline, it appends the current system date as a `load_date` column to every message.
+
+### 4. Kafka to Snowflake
+-   **Unified Topic Consumption:** Automatically consolidates the list of Kafka topics generated from both the "HDFS to Kafka" and "Hive to Kafka" pipelines.
+-   **Batch Ingestion into Pre-existing Tables:** Designed to load data into tables that are already created in Snowflake.
+-   **"Stop-When-Done" Logic:** Intelligently determines the last message offset for each topic partition at the start of the run. The consumer processes all messages up to that point and then gracefully shuts down, making it perfect for batch ETL jobs.
+-   **Live Progress Monitoring:** The UI provides real-time feedback on the ingestion progress for each topic partition, showing how many messages have been consumed versus the target.
+
+---
+
+## 🔧 Project Structure and File Purpose
+
+This project is structured with a clear separation between the UI logic (`app.py`) and the backend business logic (individual class modules).
+
+-   `app.py`
+    -   **Purpose:** The main entry point for the Streamlit web application.
+    -   **Contains:** All UI layout code (tabs, buttons, expanders, logs) and orchestrates calls to the various logic classes. It holds the "view" part of the application.
+
+-   `create_hive_table.py`
+    -   **Purpose:** Contains the `HiveTableCreator` class.
+    -   **Logic:** Handles all HDFS interactions (listing files, reading CSVs for schema inference) and executes `CREATE TABLE` DDLs in Hive, typically via `beeline` subprocesses.
+
+-   `delta_hdfs_kafka_producer.py`
+    -   **Purpose:** Contains the `HdfsToKafkaProducer` class.
+    -   **Logic:** Implements the "HDFS Delta to Kafka" pipeline. Manages its own state, discovers new date partitions in HDFS, and streams file contents to Kafka.
+
+-   `hive_delta_kafkaproducer.py` 
+    -   **Purpose:** Contains the `KafkaMigrator` class.
+    -   **Logic:** Implements the "Hive Delta to Kafka" pipeline. Manages persistent state in a JSON file, discovers new Hive partitions, previews data, and streams table rows to Kafka concurrently.
+
+-   `sf_consumer.py` 
+    -   **Purpose:** Contains the `SnowflakeConsumer` class.
+    -   **Logic:** Implements the "Kafka to Snowflake" pipeline. Manages the batch ingestion process, determines when all topics are fully consumed, and handles inserting data into Snowflake tables.
+
+-   `config.py` & `SF_connect.properties`
+    -   **Purpose:** Configuration files used to store sensitive or environment-specific connection details, such as Snowflake credentials. This is a good practice to separate configuration from code.
+
+-   `load_incremental_data.py`
+    -   **Purpose:** The precursor script for the "HDFS to Hive" incremental loading logic. The functionality of this script has been encapsulated into a class and integrated into the Streamlit UI.
+
+-   `scripts.sh`, `hdfs_to_kafka.sh`
+    -   **Purpose:** Utility shell scripts, likely used for manual execution of parts of the pipeline or for setup tasks.
+
+-   `structure.txt`, `structure.py`
+    -   **Purpose:** Utility files, likely used during development to inspect or define data structures.
+
+---
+
+## ⚙️ Setup and Installation
+
+The machine running this Streamlit app must have the necessary command-line tools installed and available in its `PATH`.
+
+**Prerequisites:**
+-   Python 3.8+
+-   `hdfs` command-line client
+-   `beeline` command-line client (for Hive interaction)
+
+**Installation Steps:**
+
+1.  **Clone the repository or set up the project files.**
+
+2.  **Install Python dependencies from `requirements.txt`:**
     ```bash
-    pip install confluent-kafka
+    pip install -r requirements.txt
     ```
+    *Note: A typical `requirements.txt` would include `streamlit`, `pandas`, `pyhive`, and `confluent-kafka-python`.*
 
----
+3.  **Configure the Application:**
+    -   Open `app.py` and modify the variables in the `--- CONFIGURATION ---` section at the top to match your environment (HDFS host, Hive host, Kafka server, etc.).
+    -   Update `config.py` or `SF_connect.properties` with your Snowflake credentials.
 
-## Setup Instructions
+## ▶️ How to Run
 
-### 1. Start Kafka Services
-Start Zookeeper and Kafka servers:
-```bash
-kafka/bin/zookeeper-server-start.sh kafka/config/zookeeper.properties
-kafka/bin/kafka-server-start.sh kafka/config/server.properties
-```
-
-### 2. Create a Kafka Topic
-Create a Kafka topic to publish data:
-```bash
-kafka-topics.sh --create --topic <topic_name> --bootstrap-server localhost:9092 --partitions 1 --replication-factor 1
-```
-
-### 3. Stream Data from HDFS to Kafka
-Stream data from an HDFS file to the Kafka topic:
-```bash
-hdfs dfs -cat /path_to_file/file_name.csv | kafka-console-producer.sh --broker-list localhost:9092 --topic <topic_name>
-```
-
-### 4. Verify Data in Kafka
-Check the messages pushed to the Kafka topic:
-```bash
-kafka-console-consumer.sh --bootstrap-server localhost:9092 --topic <topic_name> --from-beginning
-```
-
-### 5. Publish Data to Snowflake
-Use the Snowflake Kafka Connector to publish data from Kafka to Snowflake:
-```bash
-bin/connect-standalone.sh config/connect-standalone.properties SF_connect.properties
-```
-
-Ensure the target table in Snowflake is created with the following format:
-```sql
-CREATE OR REPLACE TABLE DB_NAME.SCHEMA_NAME.TABLE_NAME (
-     RECORD_METADATA VARIANT,
-     RECORD_CONTENT VARIANT
-);
-```
-
----
-
-## Scripts Overview
-
-### `delta_hdfs_kafka_connector.py`
-This script streams data from HDFS to Kafka using date-based partitions. It tracks the last processed date using a state file in HDFS.
-
-Run the script:
-```bash
-python3 delta_hdfs_kafka_connector.py
-```
-
-### `scripts.sh`
-This script includes commands to:
-- Start Kafka services
-- Create Kafka topics
-- Stream data from HDFS to Kafka
-- Verify Kafka messages
-- Publish data to Snowflake
-
-### `SF_connect.properties`
-This file contains configuration details for the Snowflake Kafka Connector, including:
-- Snowflake account details
-- Kafka topic-to-table mapping
-- Buffer settings
-
----
-
-## Delta Load Options
-
-1. **Using Date Partitions**: Run the `delta_hdfs_kafka_connector.py` script to process new date-based partitions.
-2. **Using Line Counts**: Use a custom script `hdfs_kafka_sync.sh` to compare and stream new lines from the same file.
-
----
-
-## Logging and Debugging
-
-Configure Snowflake Kafka Connector logs in `SF_connect.properties`:
-```properties
-logger.snowflake.name = com.snowflake.kafka.connector
-logger.snowflake.level = DEBUG
-```
+1.  Navigate to the root directory of the project in your terminal.
+    ```bash
+    cd /path/to/your/project_directory
+    ```
+2.  Run the Streamlit application:
+    ```bash
+    streamlit run app.py
+    ```
+3.  A new tab should automatically open in your web browser with the application running. You can now start using the DataOps Toolkit.

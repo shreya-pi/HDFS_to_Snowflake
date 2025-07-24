@@ -1,0 +1,16 @@
+./
+    app.py
+    config.py
+    consumer.py
+    create_hive_table.py
+    delta_hdfs_kafka_producer.py
+    hdfs_to_kafka.sh
+    hive_delta_kafkaproducer.py
+    load_incremental_data.py
+    multiple_tables_hdfs_kafka.py
+    README.md
+    scripts.sh
+    SF_connect.properties
+    sf_consumer.py
+    structure.py
+    structure.txt
